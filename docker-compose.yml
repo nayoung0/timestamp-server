@@ -1,0 +1,63 @@
+version: "3.9"
+   
+services:
+  db:
+    image: postgres
+    container_name: timestamp_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_DB=postgres
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    ports:
+      - "127.0.0.1:5432:5432"
+    networks:
+      timestamp_network:
+        ipv4_address: 172.20.1.2 
+
+  redis:
+    image: redis:4.0.10
+    command: redis-server --requirepass changeme --port 6379
+    volumes:
+      - redis_data:/var/lib/redis
+    container_name: timestamp_redis
+    hostname: redis
+    ports:
+      - "127.0.0.1:6379:6379"
+    networks:
+      timestamp_network:
+        ipv4_address: 172.20.1.4
+  
+  server:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    command: python manage.py runserver 0.0.0.0:8000
+    env_file: local.env
+    container_name: timestamp_server
+    volumes:
+      - .:/server
+    ports:
+      - "127.0.0.1:8000:8000"
+    depends_on:
+      - db
+      - redis
+    links:
+      - db:db
+      - redis:redis
+    networks:
+      timestamp_network:
+        ipv4_address: 172.20.1.5
+      
+
+volumes:
+  postgres_data:
+  redis_data:
+
+
+networks:
+  timestamp_network:
+    ipam:
+      config:
+        - subnet: 172.20.1.0/24
